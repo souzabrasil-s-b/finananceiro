@@ -150,6 +150,32 @@
 </head>
 <body>
 
+<script>
+/* =========================================================
+   Faxina de cache antigo — roda ANTES de tudo, uma ÚNICA vez
+   por aparelho, para garantir que nenhuma versão velha
+   (cacheada pelo Service Worker) seja exibida sem a tela de
+   senha. Depois dessa limpeza única, o cache normal do PWA
+   volta a funcionar (inclusive offline).
+========================================================= */
+(function() {
+  var CLEANUP_FLAG = "livrocaixa:cacheCleanupV1";
+  if (localStorage.getItem(CLEANUP_FLAG)) return; // já limpou antes, não repete
+  localStorage.setItem(CLEANUP_FLAG, "1");
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(reg => reg.unregister());
+    }).catch(()=>{});
+  }
+  if (window.caches && caches.keys) {
+    caches.keys().then(names => {
+      names.forEach(name => caches.delete(name));
+    }).catch(()=>{});
+  }
+})();
+</script>
+
 <div id="lockScreen" style="position:fixed; inset:0; z-index:99999; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px;">
   <div style="width:100%; max-width:340px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px 24px; text-align:center;">
     <div style="font-size:32px; margin-bottom:8px;">🔒</div>
@@ -794,15 +820,19 @@ function viewPatrimonio(c) {
    DÍVIDAS
 ========================================================= */
 function viewDividas(c) {
+  const mkAtual = monthKey(todayISO());
+  const pendentes = DATA.dividas.filter(d => d.ultimoPagamento !== mkAtual).length;
   return `
     <div><p class="eyebrow">Compromissos fixos</p><h2 class="section-title">Dívidas</h2></div>
     <div class="btn-row">
       <button class="btn btn-rust" onclick="openDividaModal()">➕ Nova dívida / despesa fixa</button>
-      <button class="btn btn-gold" onclick="lancarTodasDespesasFixas()">💸 Paguei todas este mês</button>
+      <button class="btn btn-gold" onclick="lancarTodasDespesasFixas()">💸 Paguei todas este mês${pendentes>0 ? ` (${pendentes})` : ""}</button>
     </div>
-    <p class="hint">Clique em "Paguei" na despesa correspondente assim que pagar — o valor é lançado como saída na hora e já é subtraído do caixa.</p>
+    <p class="hint">Clique em "Paguei" na despesa correspondente assim que pagar — o valor é lançado como saída na hora e já é subtraído do caixa. Cada dívida só pode ser paga uma vez por mês; se marcar errado, dá pra desfazer.</p>
     <div class="card" style="padding:0;">
-      ${DATA.dividas.map(d=>`
+      ${DATA.dividas.map(d=>{
+        const pagaEsteMes = d.ultimoPagamento === mkAtual;
+        return `
         <div class="list-row" style="flex-direction:column; align-items:stretch; gap:10px;">
           <div class="flex-between">
             <div class="row-left">
@@ -810,6 +840,7 @@ function viewDividas(c) {
               <div>
                 <p class="row-title">${d.nome}</p>
                 ${d.parcelasRestantes>0 ? `<p class="row-sub">${d.parcelasRestantes} parcelas restantes</p>` : ""}
+                ${pagaEsteMes ? `<p class="row-sub" style="color:var(--green);">✅ Paga em ${monthLabel(d.ultimoPagamento+"-01")}</p>` : ""}
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -818,9 +849,12 @@ function viewDividas(c) {
               <button class="ghost-del" onclick="deleteDivida('${d.id}')">🗑</button>
             </div>
           </div>
-          <button class="btn btn-gold" style="align-self:flex-start;" onclick="lancarDividaComoDespesa('${d.id}')">💸 Paguei ${d.nome}</button>
+          ${pagaEsteMes
+            ? `<button class="btn" style="align-self:flex-start; background:var(--panel); border:1px solid var(--line); color:var(--paperDim);" onclick="desfazerPagamentoDivida('${d.id}')">↩️ Desfazer pagamento</button>`
+            : `<button class="btn btn-gold" style="align-self:flex-start;" onclick="lancarDividaComoDespesa('${d.id}')">💸 Paguei ${d.nome}</button>`
+          }
         </div>
-      `).join("")}
+      `}).join("")}
     </div>
     <div class="card flex-between">
       <span style="color:var(--paperDim);">Total em dívidas</span>
@@ -1106,7 +1140,7 @@ function submitDivida() {
   const valor = parseFloat(document.getElementById("f-valor").value);
   const parcelasRestantes = parseInt(document.getElementById("f-parcelas").value || "0", 10);
   if (!nome || !valor) return;
-  DATA.dividas.push({ id: uid(), nome, tipo, valor, parcelasRestantes });
+  DATA.dividas.push({ id: uid(), nome, tipo, valor, parcelasRestantes, ultimoPagamento: null, ultimaTransacaoId: null });
   saveData(); closeModal(); render();
 }
 function deleteDivida(id) {
@@ -1131,22 +1165,44 @@ function showToast(msg) {
 function lancarDividaComoDespesa(id) {
   const d = DATA.dividas.find(x=>x.id===id);
   if (!d || !d.valor) return;
-  DATA.transactions.unshift({ id: uid(), type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: todayISO() });
+  const mk = monthKey(todayISO());
+  if (d.ultimoPagamento === mk) return; // já paga este mês, evita duplicar
+  const txId = uid();
+  DATA.transactions.unshift({ id: txId, type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: todayISO() });
+  d.ultimoPagamento = mk;
+  d.ultimaTransacaoId = txId;
   saveData(); render();
   showToast(`✅ "${d.nome}" lançado como saída — ${brl(d.valor)} descontado do saldo`);
 }
 
+function desfazerPagamentoDivida(id) {
+  const d = DATA.dividas.find(x=>x.id===id);
+  if (!d) return;
+  if (d.ultimaTransacaoId) {
+    DATA.transactions = DATA.transactions.filter(t=>t.id!==d.ultimaTransacaoId);
+  }
+  d.ultimoPagamento = null;
+  d.ultimaTransacaoId = null;
+  saveData(); render();
+  showToast(`↩️ Pagamento de "${d.nome}" desfeito`);
+}
+
 function lancarTodasDespesasFixas() {
   const hoje = todayISO();
+  const mk = monthKey(hoje);
   let total = 0, qtd = 0;
   DATA.dividas.forEach(d => {
-    if (d.valor > 0) {
-      DATA.transactions.unshift({ id: uid(), type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: hoje });
+    if (d.valor > 0 && d.ultimoPagamento !== mk) {
+      const txId = uid();
+      DATA.transactions.unshift({ id: txId, type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: hoje });
+      d.ultimoPagamento = mk;
+      d.ultimaTransacaoId = txId;
       total += d.valor; qtd++;
     }
   });
   saveData(); render();
   if (qtd > 0) showToast(`✅ ${qtd} despesas lançadas — ${brl(total)} descontado do saldo`);
+  else showToast(`ℹ️ Todas as dívidas já foram pagas este mês`);
 }
 
 function openDizimoModal() {
