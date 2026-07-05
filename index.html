@@ -149,6 +149,21 @@
 </style>
 </head>
 <body>
+
+<div id="lockScreen" style="position:fixed; inset:0; z-index:99999; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px;">
+  <div style="width:100%; max-width:340px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px 24px; text-align:center;">
+    <div style="font-size:32px; margin-bottom:8px;">🔒</div>
+    <h2 style="font-family:'Fraunces',serif; font-size:20px; color:var(--paper); margin:0 0 4px;">Livro-Caixa</h2>
+    <p style="font-size:12px; color:var(--paperDim); margin:0 0 20px;">Digite a senha para continuar</p>
+    <input id="lockPasswordInput" type="password" placeholder="Senha" autocomplete="off"
+      style="background:var(--inputBg); border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:10px 12px; font-size:14px; font-family:'Inter',sans-serif; outline:none; width:100%; margin-bottom:10px;" />
+    <button id="lockSubmitBtn" class="btn btn-gold" style="width:100%; justify-content:center;">Entrar</button>
+    <p id="lockError" style="font-size:12px; color:var(--rust); margin:10px 0 0; display:none;">Senha incorreta. Tente novamente.</p>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
 <div id="toastBox" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center;"></div>
 
 <header>
@@ -1189,6 +1204,56 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch((e) => console.error("Erro ao registrar service worker:", e));
   });
 }
+</script>
+
+</div><!-- /appRoot -->
+
+<script>
+/* =========================================================
+   Tela de senha — só a hash SHA-256 fica no código
+========================================================= */
+(function() {
+  const PASSWORD_HASH = "94f91d251f7f2ea8679e29f2dae78ab5fc066713a4fd499e075e0a542421068a"; // sha256
+  const UNLOCK_KEY = "livrocaixa:desbloqueado";
+
+  async function sha256Hex(text) {
+    const buf = new TextEncoder().encode(text);
+    const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function unlockApp() {
+    document.getElementById("lockScreen").style.display = "none";
+    document.getElementById("appRoot").style.display = "";
+  }
+
+  // Já desbloqueado nesta sessão (evita pedir senha toda vez que reabre a aba)
+  if (sessionStorage.getItem(UNLOCK_KEY) === "1") {
+    unlockApp();
+  }
+
+  const input = document.getElementById("lockPasswordInput");
+  const btn = document.getElementById("lockSubmitBtn");
+  const errorMsg = document.getElementById("lockError");
+
+  async function tryUnlock() {
+    const value = input.value;
+    if (!value) return;
+    const hash = await sha256Hex(value);
+    if (hash === PASSWORD_HASH) {
+      sessionStorage.setItem(UNLOCK_KEY, "1");
+      errorMsg.style.display = "none";
+      unlockApp();
+    } else {
+      errorMsg.style.display = "block";
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  btn.addEventListener("click", tryUnlock);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
+})();
 </script>
 </body>
 </html>
