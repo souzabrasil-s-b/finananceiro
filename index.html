@@ -139,9 +139,11 @@
 
   .highlight-card { border:1.5px solid var(--gold); background:var(--panel2); }
   .flex-between { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
 </style>
 </head>
 <body>
+<div id="toastBox" style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; align-items:center;"></div>
 
 <header>
   <div class="header-inner">
@@ -1081,21 +1083,35 @@ function updateDividaValor(id, valor) {
   saveData(); render();
 }
 
+function showToast(msg) {
+  const box = document.getElementById("toastBox");
+  if (!box) return;
+  const el = document.createElement("div");
+  el.textContent = msg;
+  el.style.cssText = "background:var(--green,#4F9D69); color:#10241F; font-weight:600; padding:10px 18px; border-radius:10px; box-shadow:0 4px 14px rgba(0,0,0,.35); font-size:14px; animation: toastIn .25s ease-out;";
+  box.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity .3s"; setTimeout(()=>el.remove(), 300); }, 2200);
+}
+
 function lancarDividaComoDespesa(id) {
   const d = DATA.dividas.find(x=>x.id===id);
   if (!d || !d.valor) return;
   DATA.transactions.unshift({ id: uid(), type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: todayISO() });
   saveData(); render();
+  showToast(`✅ "${d.nome}" lançado como saída — ${brl(d.valor)} descontado do saldo`);
 }
 
 function lancarTodasDespesasFixas() {
   const hoje = todayISO();
+  let total = 0, qtd = 0;
   DATA.dividas.forEach(d => {
     if (d.valor > 0) {
       DATA.transactions.unshift({ id: uid(), type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: hoje });
+      total += d.valor; qtd++;
     }
   });
   saveData(); render();
+  if (qtd > 0) showToast(`✅ ${qtd} despesas lançadas — ${brl(total)} descontado do saldo`);
 }
 
 function openDizimoModal() {
