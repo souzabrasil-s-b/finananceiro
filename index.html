@@ -150,7 +150,7 @@
       <p class="subtitle">Gastos, entradas e crescimento do patrimônio</p>
     </div>
     <div>
-      <span class="saved-pill">salvo localmente</span>
+      <span class="saved-pill" id="savedPill">salvo localmente</span>
       <div class="theme-switch" id="themeSwitch"></div>
     </div>
   </div>
@@ -257,20 +257,36 @@ function saveData() {
 // entre aparelhos); se não existe ainda, sobe o que já está salvo localmente.
 fbAuth.signInAnonymously().catch((err) => console.error("Erro na autenticação anônima:", err));
 
+// O Realtime Database não guarda listas vazias (arrays sem itens somem do banco).
+// Essa função garante que, ao carregar de volta, todo campo esperado exista,
+// mesmo que esteja vazio — evita erro de "undefined" no restante do app.
+function normalizeData(d) {
+  d = d || {};
+  d.transactions = Array.isArray(d.transactions) ? d.transactions : [];
+  d.patrimonio = d.patrimonio || {};
+  d.patrimonio.poupanca = Array.isArray(d.patrimonio.poupanca) ? d.patrimonio.poupanca : [];
+  d.patrimonio.tesouro = Array.isArray(d.patrimonio.tesouro) ? d.patrimonio.tesouro : [];
+  d.dividas = Array.isArray(d.dividas) ? d.dividas : [];
+  return d;
+}
+
 fbAuth.onAuthStateChanged((user) => {
   if (!user) return;
   fbDb.ref(DB_PATH).once("value")
     .then((snap) => {
       const remoto = snap.val();
       if (remoto) {
-        DATA = remoto;
+        DATA = normalizeData(remoto);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
       } else {
+        DATA = normalizeData(DATA);
         fbDb.ref(DB_PATH).set(DATA).catch((err) => console.error("Erro ao subir dados iniciais:", err));
       }
       fbReady = true;
       ensureDespesasFixas();
       ensureValoresPadrao();
+      const pill = document.getElementById("savedPill");
+      if (pill) pill.textContent = "sincronizado ✓";
       render();
     })
     .catch((err) => console.error("Erro ao carregar dados do Firebase:", err));
