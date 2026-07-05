@@ -36,6 +36,10 @@
     --bg:#FDF1F5; --panel:#FFFFFF; --panel2:#FFF6F9; --paper:#4A2436; --paperDim:#9C7684;
     --gold:#C9944F; --rust:#D9678C; --green:#3F9C7C; --line:#F4D9E3; --inputBg:#FFF6F9; --btnText:#FFFFFF;
   }
+  :root[data-theme="neon"] {
+    --bg:#0D0221; --panel:#170B3B; --panel2:#1F1050; --paper:#00F5FF; --paperDim:#B48CFF;
+    --gold:#FFD60A; --rust:#FF206E; --green:#05FFA1; --line:#3A1E6D; --inputBg:#170B3B; --btnText:#0D0221;
+  }
   * { box-sizing: border-box; }
   body {
     margin:0; background:var(--bg); color:var(--paper); font-family:'Inter',sans-serif;
@@ -377,9 +381,19 @@ const THEMES = {
   escuro: { label: "Livro-caixa", swatch: "#CBA135" },
   azul:   { label: "Azul claro",  swatch: "#2E7DBE" },
   rosa:   { label: "Rosa claro",  swatch: "#D9678C" },
+  neon:   { label: "Escuro neon (letras coloridas)", swatch: "linear-gradient(135deg, #00F5FF, #FF206E, #FFD60A)" },
 };
 
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function todayFullLabel() {
+  const d = new Date();
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mesAbrev = MESES[d.getMonth()];
+  const mes = mesAbrev.charAt(0).toUpperCase() + mesAbrev.slice(1);
+  const ano = d.getFullYear();
+  return `${dia} ${mes} ${ano}`;
+}
 
 function setTheme(key) {
   THEME = key;
@@ -391,10 +405,13 @@ function setTheme(key) {
 
 function renderThemeSwitch() {
   const el = document.getElementById("themeSwitch");
-  el.innerHTML = Object.entries(THEMES).map(([key, val]) => `
-    <button class="swatch ${THEME === key ? "active" : ""}" title="${val.label}"
-      style="background:${val.swatch}" onclick="setTheme('${key}')"></button>
-  `).join("");
+  el.innerHTML = `
+    <span class="mono" style="font-size:11px; color:var(--paperDim); white-space:nowrap; margin-right:2px;">${todayFullLabel()}</span>
+    ${Object.entries(THEMES).map(([key, val]) => `
+      <button class="swatch ${THEME === key ? "active" : ""}" title="${val.label}"
+        style="background:${val.swatch}" onclick="setTheme('${key}')"></button>
+    `).join("")}
+  `;
 }
 
 /* =========================================================
