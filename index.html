@@ -14,6 +14,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root[data-theme="escuro"] {
     --bg:#10241F; --panel:#17332C; --panel2:#1D3B32; --paper:#F3ECD9; --paperDim:#C9C2AC;
@@ -209,6 +212,29 @@ function defaultData() {
   };
 }
 
+/* =========================================================
+   Firebase (Realtime Database) — sincronização entre aparelhos
+   Login anônimo: sem senha, sem tela de login, só protege o banco
+   de acesso externo (regras exigem auth != null).
+========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyD2QvlTbQqWgTFChPZ-1cWSrwIqh30Zvio",
+  authDomain: "financeiro-oficial.firebaseapp.com",
+  databaseURL: "https://financeiro-oficial-default-rtdb.firebaseio.com",
+  projectId: "financeiro-oficial",
+  storageBucket: "financeiro-oficial.firebasestorage.app",
+  messagingSenderId: "116416068012",
+  appId: "1:116416068012:web:b90d7edcecd18e52e8a209",
+};
+
+firebase.initializeApp(firebaseConfig);
+const fbAuth = firebase.auth();
+const fbDb = firebase.database();
+const DB_PATH = "livrocaixa/dados"; // um único "documento" com todo o estado
+
+let fbReady = false;      // true depois que autenticou E carregou os dados iniciais
+let fbSyncTimer = null;   // debounce das gravações
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -216,7 +242,39 @@ function loadData() {
   } catch (e) { /* ignora */ }
   return defaultData();
 }
-function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }
+
+// Grava local na hora (rápido, funciona offline) e agenda envio ao Firebase.
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+  if (!fbReady) return; // ainda não autenticou/carregou: não sobrescreve o banco
+  clearTimeout(fbSyncTimer);
+  fbSyncTimer = setTimeout(() => {
+    fbDb.ref(DB_PATH).set(DATA).catch((err) => console.error("Erro ao sincronizar com Firebase:", err));
+  }, 600); // espera 600ms de silêncio antes de enviar, evita gravar a cada tecla
+}
+
+// Ao autenticar, decide: se já existe dado no Firebase, usa ele (fonte da verdade
+// entre aparelhos); se não existe ainda, sobe o que já está salvo localmente.
+fbAuth.signInAnonymously().catch((err) => console.error("Erro na autenticação anônima:", err));
+
+fbAuth.onAuthStateChanged((user) => {
+  if (!user) return;
+  fbDb.ref(DB_PATH).once("value")
+    .then((snap) => {
+      const remoto = snap.val();
+      if (remoto) {
+        DATA = remoto;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA));
+      } else {
+        fbDb.ref(DB_PATH).set(DATA).catch((err) => console.error("Erro ao subir dados iniciais:", err));
+      }
+      fbReady = true;
+      ensureDespesasFixas();
+      ensureValoresPadrao();
+      render();
+    })
+    .catch((err) => console.error("Erro ao carregar dados do Firebase:", err));
+});
 
 // Garante que quem já tinha dados salvos também recebe as novas despesas fixas, sem duplicar nem apagar nada
 function ensureDespesasFixas() {
