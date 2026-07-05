@@ -14,6 +14,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+  // Se o CDN principal falhar por qualquer motivo (rede, bloqueio), tenta um segundo CDN.
+  if (typeof Chart === "undefined") {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"><\/script>');
+  }
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -184,6 +190,7 @@ const brl = (n) => (isNaN(n) ? 0 : n).toLocaleString("pt-BR", { style: "currency
 const monthKey = (iso) => iso.slice(0, 7);
 const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 const monthLabel = (iso) => { const [y,m] = iso.split("-"); return `${MESES[parseInt(m,10)-1]}/${y.slice(2)}`; };
+const dateBR = (iso) => { const [y,m,d] = iso.split("-"); return `${d}/${m}/${y}`; };
 const isDizimo = (cat) => /d[íi]zimo/i.test(cat || "");
 const iconeDivida = (tipo) => tipo === "carro" ? "🚗" : tipo === "compras" ? "🛒" : "🧾";
 
@@ -408,7 +415,19 @@ function computeAll() {
   const entradasMes = tx.filter(x=>x.type==="entrada" && monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0);
   const saidasMesTodas = tx.filter(x=>x.type==="saida" && monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0);
   const dizimoMes = tx.filter(x=>x.type==="saida" && monthKey(x.date)===mesAtual && isDizimo(x.category)).reduce((s,x)=>s+x.amount,0);
-  const saldoMes = entradasMes - saidasMesTodas;
+
+  // Gastos e entradas zeram a cada novo mês (o filtro por mesAtual acima já garante isso).
+  // Mas se o mês anterior fechou no negativo, essa dívida é arrastada como ponto de partida
+  // do novo mês, em vez de simplesmente sumir — assim você continua vendo que está devendo.
+  const [anoAtualNum, mesAtualNum] = mesAtual.split("-").map(Number);
+  const dataMesAnterior = new Date(anoAtualNum, mesAtualNum - 2, 1);
+  const mesAnteriorKey = `${dataMesAnterior.getFullYear()}-${String(dataMesAnterior.getMonth()+1).padStart(2,"0")}`;
+  const entradasMesAnterior = tx.filter(x=>x.type==="entrada" && monthKey(x.date)===mesAnteriorKey).reduce((s,x)=>s+x.amount,0);
+  const saidasMesAnterior = tx.filter(x=>x.type==="saida" && monthKey(x.date)===mesAnteriorKey).reduce((s,x)=>s+x.amount,0);
+  const saldoMesAnterior = entradasMesAnterior - saidasMesAnterior;
+  const arrasteNegativo = saldoMesAnterior < 0 ? saldoMesAnterior : 0;
+
+  const saldoMes = (entradasMes - saidasMesTodas) + arrasteNegativo;
   const metaPoupanca = entradasMes*0.1;
   const metaDizimo = entradasMes*0.1;
   const aportadoMes = DATA.patrimonio.poupanca.filter(x=>monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0)
@@ -479,7 +498,7 @@ function computeAll() {
   return {
     totalEntradas, totalSaidas, saldo, totalPoupanca, totalTesouro, totalPatrimonio, totalDividas,
     patrimonioSeries, categoriaSaidas, entradaSaidaSeries,
-    entradasMes, saldoMes, metaPoupanca, metaDizimo, aportadoMes, dizimoMes, okSaldo, okPoupanca, okDizimo,
+    entradasMes, saldoMes, metaPoupanca, metaDizimo, aportadoMes, dizimoMes, okSaldo, okPoupanca, okDizimo, arrasteNegativo,
     historicoMensal, historicoAnual, dizimosRegistrados, saldosEnviadosPoupanca, dica,
   };
 }
@@ -527,6 +546,7 @@ function viewVisao(c) {
         <div style="flex:1; min-width:0;">
           <p class="row-title" style="font-weight:600;">Regra de ouro do mês</p>
           <p class="row-sub">Nunca gaste tudo. Termine o mês com saldo positivo, poupe 10% (prosperidade) e reserve 10% para o dízimo.</p>
+          ${c.arrasteNegativo < 0 ? `<p class="hint" style="margin-top:6px; color:var(--rust); font-weight:600;">⚠️ O mês passado fechou negativo em ${brl(Math.abs(c.arrasteNegativo))} — esse valor entrou como ponto de partida deste mês.</p>` : ""}
           <div style="display:flex; flex-direction:column; gap:6px; margin-top:12px;">
             <div class="flex-between" style="font-size:12px;">
               <span style="color:var(--paperDim);">${c.okSaldo ? "✅" : "⚠️"} Saldo do mês</span>
@@ -557,7 +577,7 @@ function viewVisao(c) {
           `<div style="display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto;">
             ${c.dizimosRegistrados.map(x=>`
               <div class="flex-between" style="font-size:12px; padding:4px 0;">
-                <span style="color:var(--paperDim);">${x.date}</span>
+                <span style="color:var(--paperDim);">${dateBR(x.date)}</span>
                 <div style="display:flex; align-items:center; gap:8px;">
                   <span class="mono" style="color:var(--gold);">${brl(x.amount)}</span>
                   <button class="ghost-del" onclick="deleteTransaction('${x.id}')">🗑</button>
@@ -571,7 +591,7 @@ function viewVisao(c) {
           `<div style="display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto;">
             ${c.saldosEnviadosPoupanca.map(p=>`
               <div class="flex-between" style="font-size:12px; padding:4px 0;">
-                <span style="color:var(--paperDim);">${p.date}</span>
+                <span style="color:var(--paperDim);">${dateBR(p.date)}</span>
                 <div style="display:flex; align-items:center; gap:8px;">
                   <span class="mono" style="color:var(--green);">${brl(p.amount)}</span>
                   <button class="ghost-del" onclick="deletePatrimonio('poupanca','${p.id}')">🗑</button>
@@ -703,7 +723,7 @@ function viewLancamentos(c) {
               <div class="row-icon" style="background:${x.type==="entrada"?"color-mix(in srgb, var(--green) 15%, transparent)":"color-mix(in srgb, var(--rust) 15%, transparent)"};">${x.type==="entrada"?"📈":"📉"}</div>
               <div style="min-width:0;">
                 <p class="row-title">${x.desc}</p>
-                <p class="row-sub">${x.category} · ${x.date}</p>
+                <p class="row-sub">${x.category} · ${dateBR(x.date)}</p>
               </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -738,7 +758,7 @@ function viewPatrimonio(c) {
             ${DATA.patrimonio[sec.key].length===0 ? `<p class="hint">Sem aportes registrados.</p>` :
               DATA.patrimonio[sec.key].map(p=>`
                 <div class="flex-between" style="font-size:12px; padding:4px 0;">
-                  <span style="color:var(--paperDim);">${p.date}${p.note?" · "+p.note:""}</span>
+                  <span style="color:var(--paperDim);">${dateBR(p.date)}${p.note?" · "+p.note:""}</span>
                   <div style="display:flex; align-items:center; gap:8px;">
                     <span class="mono" style="color:var(--paper);">${brl(p.amount)}</span>
                     <button class="ghost-del" onclick="deletePatrimonio('${sec.key}','${p.id}')">🗑</button>
