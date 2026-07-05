@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="escuro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Livro-Caixa</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#CBA135">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Livro-Caixa">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root[data-theme="escuro"] {
+    --bg:#10241F; --panel:#17332C; --panel2:#1D3B32; --paper:#F3ECD9; --paperDim:#C9C2AC;
+    --gold:#CBA135; --rust:#B5573A; --green:#4F9D69; --line:#2A4A40; --inputBg:#0E1F1A; --btnText:#10241F;
+  }
+  :root[data-theme="azul"] {
+    --bg:#EAF4FC; --panel:#FFFFFF; --panel2:#F3F9FF; --paper:#123049; --paperDim:#5A7690;
+    --gold:#2E7DBE; --rust:#C0564B; --green:#2E9E70; --line:#CFE3F3; --inputBg:#F3F9FF; --btnText:#FFFFFF;
+  }
+  :root[data-theme="rosa"] {
+    --bg:#FDF1F5; --panel:#FFFFFF; --panel2:#FFF6F9; --paper:#4A2436; --paperDim:#9C7684;
+    --gold:#C9944F; --rust:#D9678C; --green:#3F9C7C; --line:#F4D9E3; --inputBg:#FFF6F9; --btnText:#FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--paper); font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono { font-family:'JetBrains Mono',monospace; }
+  .serif { font-family:'Fraunces',serif; }
+  header {
+    padding:24px 20px 16px; border-bottom:1px solid var(--line);
+  }
+  .header-inner, .tabs, main { max-width:900px; margin:0 auto; }
+  .header-inner { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  h1 { font-family:'Fraunces',serif; font-weight:600; font-size:28px; margin:0; color:var(--paper); }
+  .subtitle { font-size:12px; color:var(--paperDim); margin-top:4px; }
+  .saved-pill {
+    font-size:11px; padding:4px 10px; border-radius:999px; border:1px solid var(--green); color:var(--green);
+    font-family:'JetBrains Mono',monospace; white-space:nowrap;
+  }
+  .theme-switch { display:flex; align-items:center; gap:6px; margin-top:8px; justify-content:flex-end; }
+  .swatch {
+    width:22px; height:22px; border-radius:999px; border:2px solid transparent; cursor:pointer; padding:0;
+    transition: transform .15s;
+  }
+  .swatch.active { border-color:var(--paper); transform:scale(1.15); }
+  .tabs { display:flex; gap:4px; margin-top:18px; flex-wrap:wrap; padding-bottom:2px; }
+  .tab-btn {
+    padding:7px 12px; border-radius:8px; border:none; background:transparent; color:var(--paperDim);
+    font-size:13px; font-weight:500; cursor:pointer; white-space:nowrap; font-family:'Inter',sans-serif;
+  }
+  .tab-btn.active { background:var(--gold); color:var(--btnText); font-weight:600; }
+  main { padding:24px 20px 80px; display:flex; flex-direction:column; gap:24px; }
+  .card {
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px;
+  }
+  .eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--gold); font-family:'JetBrains Mono',monospace; margin:0 0 4px; }
+  .section-title { font-size:20px; font-family:'Fraunces',serif; font-weight:600; margin:0; color:var(--paper); }
+  .section-desc { font-size:12px; color:var(--paperDim); margin-top:4px; }
+
+  .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  @media(min-width:640px){ .stats-grid{ grid-template-columns:repeat(4,1fr); } }
+  .stat-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--paperDim); font-family:'JetBrains Mono',monospace; }
+  .stat-value { font-size: clamp(0.95rem, 4vw, 1.5rem); font-weight:600; font-family:'JetBrains Mono',monospace; color:var(--paper); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .stat-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px; }
+
+  .btn {
+    display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border-radius:8px; border:none;
+    font-size:14px; font-weight:500; cursor:pointer; font-family:'Inter',sans-serif; color:var(--btnText);
+    transition: transform .1s;
+  }
+  .btn:active { transform:scale(.96); }
+  .btn-green { background:var(--green); }
+  .btn-rust { background:var(--rust); }
+  .btn-gold { background:var(--gold); }
+  .btn-row { display:flex; gap:10px; flex-wrap:wrap; }
+
+  .ghost-del { background:none; border:none; color:var(--rust); cursor:pointer; padding:6px; border-radius:8px; }
+  .ghost-del:hover { background:rgba(0,0,0,.06); }
+
+  .field { display:flex; flex-direction:column; gap:4px; font-size:13px; }
+  .field span { color:var(--paperDim); }
+  input, select {
+    background:var(--inputBg); border:1px solid var(--line); color:var(--paper); border-radius:8px;
+    padding:9px 12px; font-size:14px; font-family:'Inter',sans-serif; outline:none; width:100%;
+  }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-col { display:flex; flex-direction:column; gap:12px; }
+
+  .list-row { display:flex; align-items:center; justify-content:space-between; padding:12px; gap:10px; border-top:1px solid var(--line); }
+  .list-row:first-child { border-top:none; }
+  .row-left { display:flex; align-items:center; gap:12px; min-width:0; }
+  .row-icon { width:32px; height:32px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:15px; }
+  .row-title { font-size:14px; font-weight:500; color:var(--paper); margin:0; }
+  .row-sub { font-size:11px; color:var(--paperDim); margin:2px 0 0; }
+  .empty-msg { padding:24px; text-align:center; font-size:13px; color:var(--paperDim); }
+
+  .teach-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+  @media(min-width:640px){ .teach-grid { grid-template-columns:1fr 1fr; } }
+  .teach-card-head { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .teach-icon { width:32px; height:32px; border-radius:999px; background:color-mix(in srgb, var(--gold) 15%, transparent); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .teach-title { font-size:14px; font-weight:600; color:var(--paper); margin:0; }
+  .teach-text { font-size:12px; color:var(--paperDim); line-height:1.55; margin:0; }
+
+  table { width:100%; border-collapse:collapse; font-size:12px; color:var(--paper); }
+  th { text-align:left; padding-bottom:8px; padding-right:12px; color:var(--paperDim); font-weight:500; }
+  td { padding:8px 12px 8px 0; border-top:1px solid var(--line); }
+  tfoot td { border-top:2px solid var(--gold); font-weight:600; }
+  .table-wrap { overflow-x:auto; }
+
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; justify-content:center;
+    padding:0; z-index:50;
+  }
+  @media(min-width:640px){ .modal-overlay{ align-items:center; padding:16px; } }
+  .modal-overlay.hidden { display:none; }
+  .modal {
+    width:100%; max-width:440px; background:var(--panel2); border:1px solid var(--line);
+    border-radius:18px 18px 0 0; padding:20px;
+  }
+  @media(min-width:640px){ .modal{ border-radius:18px; } }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .modal-header h3 { font-family:'Fraunces',serif; font-size:18px; margin:0; color:var(--paper); }
+  .modal-close { background:none; border:none; color:var(--paperDim); font-size:18px; cursor:pointer; }
+  .hint { font-size:11px; color:var(--paperDim); margin:0; }
+
+  .chart-box { position:relative; height:230px; }
+  .chart-title { font-size:13px; color:var(--paperDim); margin:0 0 12px; }
+
+  .highlight-card { border:1.5px solid var(--gold); background:var(--panel2); }
+  .flex-between { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <h1>Livro-Caixa</h1>
+      <p class="subtitle">Gastos, entradas e crescimento do patrimônio</p>
+    </div>
+    <div>
+      <span class="saved-pill">salvo localmente</span>
+      <div class="theme-switch" id="themeSwitch"></div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+
+<main id="main"></main>
+
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle"></h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   Estado e persistência (localStorage)
+========================================================= */
+const STORAGE_KEY = "livrocaixa:v1";
+const THEME_KEY = "livrocaixa:tema";
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const brl = (n) => (isNaN(n) ? 0 : n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const monthKey = (iso) => iso.slice(0, 7);
+const MESES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const monthLabel = (iso) => { const [y,m] = iso.split("-"); return `${MESES[parseInt(m,10)-1]}/${y.slice(2)}`; };
+const isDizimo = (cat) => /d[íi]zimo/i.test(cat || "");
+const iconeDivida = (tipo) => tipo === "carro" ? "🚗" : tipo === "compras" ? "🛒" : "🧾";
+
+const DESPESAS_FIXAS_PADRAO = [
+  { nome: "Internet", valor: 130 },
+  { nome: "Telefonia", valor: 150 },
+  { nome: "Gasolina", valor: 600 },
+  { nome: "Academia", valor: 220 },
+  { nome: "Educação", valor: 150 },
+  { nome: "Streaming", valor: 100 },
+  { nome: "Cabeleireiro", valor: 140 },
+  { nome: "Seguro", valor: 60 },
+  { nome: "Rondônia", valor: 200 },
+  { nome: "Transporte", valor: 500 },
+  { nome: "Pensão", valor: 300 },
+  { nome: "Aluguel ponto", valor: 400 },
+];
+
+function defaultData() {
+  return {
+    transactions: [],
+    patrimonio: { poupanca: [], tesouro: [] },
+    dividas: [
+      { id: uid(), nome: "Carro", tipo: "carro", valor: 1500, parcelasRestantes: 0 },
+      { id: uid(), nome: "Compras do mês", tipo: "compras", valor: 3000, parcelasRestantes: 0 },
+      ...DESPESAS_FIXAS_PADRAO.map(item => ({ id: uid(), nome: item.nome, tipo: "fixa", valor: item.valor, parcelasRestantes: 0 })),
+    ],
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { /* ignora */ }
+  return defaultData();
+}
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); }
+
+// Garante que quem já tinha dados salvos também recebe as novas despesas fixas, sem duplicar nem apagar nada
+function ensureDespesasFixas() {
+  const existentes = new Set(DATA.dividas.map(d => d.nome.trim().toLowerCase()));
+  let mudou = false;
+  DESPESAS_FIXAS_PADRAO.forEach(item => {
+    if (!existentes.has(item.nome.trim().toLowerCase())) {
+      DATA.dividas.push({ id: uid(), nome: item.nome, tipo: "fixa", valor: item.valor, parcelasRestantes: 0 });
+      mudou = true;
+    }
+  });
+  if (mudou) saveData();
+}
+
+// Preenche Carro (1500) e Compras do mês (3000) automaticamente, só se ainda estiverem zerados
+// (não sobrescreve se você já tiver editado o valor manualmente)
+function ensureValoresPadrao() {
+  let mudou = false;
+  DATA.dividas.forEach(d => {
+    if (d.nome.trim().toLowerCase() === "carro" && (!d.valor || d.valor === 0)) { d.valor = 1500; mudou = true; }
+    if (d.nome.trim().toLowerCase() === "compras do mês" && (!d.valor || d.valor === 0)) { d.valor = 3000; mudou = true; }
+  });
+  if (mudou) saveData();
+}
+
+let DATA = loadData();
+ensureDespesasFixas();
+ensureValoresPadrao();
+let THEME = localStorage.getItem(THEME_KEY) || "escuro";
+let TAB = "visao";
+let charts = {}; // instâncias Chart.js ativas, para destruir ao re-renderizar
+
+const THEMES = {
+  escuro: { label: "Livro-caixa", swatch: "#CBA135" },
+  azul:   { label: "Azul claro",  swatch: "#2E7DBE" },
+  rosa:   { label: "Rosa claro",  swatch: "#D9678C" },
+};
+
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function setTheme(key) {
+  THEME = key;
+  document.documentElement.setAttribute("data-theme", key);
+  localStorage.setItem(THEME_KEY, key);
+  renderThemeSwitch();
+  render();
+}
+
+function renderThemeSwitch() {
+  const el = document.getElementById("themeSwitch");
+  el.innerHTML = Object.entries(THEMES).map(([key, val]) => `
+    <button class="swatch ${THEME === key ? "active" : ""}" title="${val.label}"
+      style="background:${val.swatch}" onclick="setTheme('${key}')"></button>
+  `).join("");
+}
+
+/* =========================================================
+   Tabs
+========================================================= */
+const TABS = [
+  { id: "visao", label: "Visão geral" },
+  { id: "lancamentos", label: "Lançamentos" },
+  { id: "patrimonio", label: "Patrimônio" },
+  { id: "dividas", label: "Dívidas" },
+  { id: "historico", label: "Histórico" },
+  { id: "aprenda", label: "Aprenda" },
+];
+
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = TABS.map(t => `
+    <button class="tab-btn ${TAB === t.id ? "active" : ""}" onclick="setTab('${t.id}')">${t.label}</button>
+  `).join("");
+}
+function setTab(id) { TAB = id; render(); }
+
+/* =========================================================
+   Cálculos derivados
+========================================================= */
+function computeAll() {
+  const tx = DATA.transactions;
+  const totalEntradas = tx.filter(x=>x.type==="entrada").reduce((s,x)=>s+x.amount,0);
+  const totalSaidas = tx.filter(x=>x.type==="saida").reduce((s,x)=>s+x.amount,0);
+  const saldo = totalEntradas - totalSaidas;
+
+  const totalPoupanca = DATA.patrimonio.poupanca.reduce((s,p)=>s+p.amount,0);
+  const totalTesouro = DATA.patrimonio.tesouro.reduce((s,p)=>s+p.amount,0);
+  const totalPatrimonio = totalPoupanca + totalTesouro;
+
+  const totalDividas = DATA.dividas.reduce((s,d)=>s+(d.valor||0),0);
+
+  // patrimônio acumulado por mês (para gráfico de evolução simples)
+  const patAll = [...DATA.patrimonio.poupanca, ...DATA.patrimonio.tesouro].sort((a,b)=>a.date.localeCompare(b.date));
+  let acc = 0;
+  const patrimonioSeries = patAll.map(p => { acc += p.amount; return { label: monthLabel(p.date), total: Math.round(acc*100)/100 }; });
+
+  // saídas por categoria
+  const catMap = {};
+  tx.filter(x=>x.type==="saida").forEach(x=>{ catMap[x.category] = (catMap[x.category]||0)+x.amount; });
+  const categoriaSaidas = Object.entries(catMap).map(([name,value])=>({name,value}));
+
+  // entradas vs saídas por mês
+  const esMap = {};
+  tx.forEach(x=>{
+    const k = monthKey(x.date);
+    if(!esMap[k]) esMap[k] = {key:k, entradas:0, saidas:0};
+    if(x.type==="entrada") esMap[k].entradas += x.amount; else esMap[k].saidas += x.amount;
+  });
+  const entradaSaidaSeries = Object.values(esMap).sort((a,b)=>a.key.localeCompare(b.key))
+    .map(m=>({mes:monthLabel(m.key+"-01"), entradas:Math.round(m.entradas*100)/100, saidas:Math.round(m.saidas*100)/100}));
+
+  // mês atual
+  const mesAtual = monthKey(todayISO());
+  const entradasMes = tx.filter(x=>x.type==="entrada" && monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0);
+  const saidasMesTodas = tx.filter(x=>x.type==="saida" && monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0);
+  const dizimoMes = tx.filter(x=>x.type==="saida" && monthKey(x.date)===mesAtual && isDizimo(x.category)).reduce((s,x)=>s+x.amount,0);
+  const saldoMes = entradasMes - saidasMesTodas;
+  const metaPoupanca = entradasMes*0.1;
+  const metaDizimo = entradasMes*0.1;
+  const aportadoMes = DATA.patrimonio.poupanca.filter(x=>monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0)
+                    + DATA.patrimonio.tesouro.filter(x=>monthKey(x.date)===mesAtual).reduce((s,x)=>s+x.amount,0);
+  const okSaldo = entradasMes===0 || saldoMes>=0;
+  const okPoupanca = entradasMes===0 || aportadoMes>=metaPoupanca;
+  const okDizimo = entradasMes===0 || dizimoMes>=metaDizimo;
+
+  // histórico mensal completo
+  const hmMap = {};
+  tx.forEach(x=>{
+    const k = monthKey(x.date);
+    if(!hmMap[k]) hmMap[k] = {entradas:0, saidas:0, dizimo:0};
+    if(x.type==="entrada") hmMap[k].entradas += x.amount;
+    else { hmMap[k].saidas += x.amount; if(isDizimo(x.category)) hmMap[k].dizimo += x.amount; }
+  });
+  const patMap = {};
+  patAll.forEach(p=>{ const k=monthKey(p.date); patMap[k]=(patMap[k]||0)+p.amount; });
+  const allKeys = Array.from(new Set([...Object.keys(hmMap), ...Object.keys(patMap)])).sort();
+  let acumulado = 0;
+  const historicoMensal = allKeys.map(k=>{
+    const m = hmMap[k] || {entradas:0, saidas:0, dizimo:0};
+    const aportes = patMap[k]||0;
+    acumulado += aportes;
+    const s = m.entradas - m.saidas;
+    return {
+      key:k, mes: monthLabel(k+"-01"), ano:k.slice(0,4),
+      entradas: Math.round(m.entradas*100)/100, saidas: Math.round(m.saidas*100)/100,
+      saldo: Math.round(s*100)/100, aportes: Math.round(aportes*100)/100, dizimo: Math.round(m.dizimo*100)/100,
+      acumuladoPatrimonio: Math.round(acumulado*100)/100,
+      pctPoupado: m.entradas>0 ? Math.round((aportes/m.entradas)*1000)/10 : 0,
+      pctDizimo: m.entradas>0 ? Math.round((m.dizimo/m.entradas)*1000)/10 : 0,
+      pctGasto: m.entradas>0 ? Math.round((m.saidas/m.entradas)*1000)/10 : 0,
+    };
+  });
+
+  // histórico anual
+  const yMap = {};
+  historicoMensal.forEach(m=>{
+    if(!yMap[m.ano]) yMap[m.ano] = {ano:m.ano, entradas:0, saidas:0, aportes:0, dizimo:0, acumuladoPatrimonio:0};
+    yMap[m.ano].entradas += m.entradas; yMap[m.ano].saidas += m.saidas;
+    yMap[m.ano].aportes += m.aportes; yMap[m.ano].dizimo += m.dizimo;
+    yMap[m.ano].acumuladoPatrimonio = m.acumuladoPatrimonio;
+  });
+  const yArr = Object.values(yMap).sort((a,b)=>a.ano.localeCompare(b.ano));
+  const historicoAnual = yArr.map((y,i)=>{
+    const s = y.entradas - y.saidas;
+    const prev = yArr[i-1];
+    const crescimentoEntradas = prev && prev.entradas>0 ? Math.round(((y.entradas-prev.entradas)/prev.entradas)*1000)/10 : null;
+    return { ...y, saldo: Math.round(s*100)/100,
+      pctPoupado: y.entradas>0 ? Math.round((y.aportes/y.entradas)*1000)/10 : 0,
+      pctDizimo: y.entradas>0 ? Math.round((y.dizimo/y.entradas)*1000)/10 : 0,
+      crescimentoEntradas };
+  });
+
+  const dizimosRegistrados = tx.filter(x=>x.type==="saida" && isDizimo(x.category)).sort((a,b)=>b.date.localeCompare(a.date));
+  const saldosEnviadosPoupanca = DATA.patrimonio.poupanca.filter(p=>p.note==="Saldo do mês enviado").sort((a,b)=>b.date.localeCompare(a.date));
+
+  // dica personalizada
+  let dica;
+  if (entradasMes===0) dica = "Registre as entradas deste mês para receber uma dica personalizada baseada na sua própria evolução.";
+  else if (saldoMes<0) dica = "Este mês fechou negativo. Antes de qualquer novo gasto, revise as categorias em Lançamentos e corte o que for variável (lazer, compras) até o saldo voltar a ficar positivo.";
+  else if (aportadoMes<metaPoupanca) dica = `Faltam ${brl(metaPoupanca-aportadoMes)} para completar os 10% de poupança/Tesouro Direto deste mês. Considere usar o botão "Enviar saldo p/ poupança" agora, enquanto o dinheiro ainda está disponível.`;
+  else if (dizimoMes<metaDizimo) dica = `Faltam ${brl(metaDizimo-dizimoMes)} para completar os 10% de dízimo deste mês.`;
+  else if (totalDividas > totalEntradas*0.3 && totalEntradas>0) dica = "Suas dívidas fixas somam mais de 30% das entradas totais registradas. Priorize quitar a de maior juros antes de assumir novos compromissos, mesmo mantendo poupança e dízimo em dia.";
+  else dica = "Você já cumpriu poupança e dízimo este mês — parabéns pela disciplina. Considere direcionar qualquer excedente para o Tesouro Direto, que rende mais que a poupança no longo prazo.";
+
+  return {
+    totalEntradas, totalSaidas, saldo, totalPoupanca, totalTesouro, totalPatrimonio, totalDividas,
+    patrimonioSeries, categoriaSaidas, entradaSaidaSeries,
+    entradasMes, saldoMes, metaPoupanca, metaDizimo, aportadoMes, dizimoMes, okSaldo, okPoupanca, okDizimo,
+    historicoMensal, historicoAnual, dizimosRegistrados, saldosEnviadosPoupanca, dica,
+  };
+}
+
+/* =========================================================
+   Render principal
+========================================================= */
+function render() {
+  renderTabs();
+  const c = computeAll();
+  const main = document.getElementById("main");
+  if (TAB === "visao") main.innerHTML = viewVisao(c);
+  else if (TAB === "lancamentos") main.innerHTML = viewLancamentos(c);
+  else if (TAB === "patrimonio") main.innerHTML = viewPatrimonio(c);
+  else if (TAB === "dividas") main.innerHTML = viewDividas(c);
+  else if (TAB === "historico") main.innerHTML = viewHistorico(c);
+  else if (TAB === "aprenda") main.innerHTML = viewAprenda();
+
+  Object.values(charts).forEach(ch => ch && ch.destroy());
+  charts = {};
+
+  if (typeof Chart === "undefined") {
+    document.querySelectorAll(".chart-box").forEach(box => {
+      box.innerHTML = '<p class="empty-msg">Gráfico indisponível no momento (sem conexão para carregar a biblioteca). Os dados e valores continuam normais nas outras abas.</p>';
+    });
+    return;
+  }
+  try {
+    if (TAB === "visao") mountVisaoCharts(c);
+    if (TAB === "historico") mountHistoricoCharts(c);
+  } catch (e) {
+    console.error("Erro ao montar gráficos:", e);
+  }
+}
+
+/* =========================================================
+   VISÃO GERAL
+========================================================= */
+function viewVisao(c) {
+  const okAll = c.okSaldo && c.okPoupanca && c.okDizimo;
+  return `
+    <div class="card" style="border-color:${okAll ? "var(--green)" : "var(--gold)"}; border-width:1.5px;">
+      <div style="display:flex; align-items:flex-start; gap:12px;">
+        <div class="row-icon" style="background:color-mix(in srgb, var(--gold) 15%, transparent);">🐷</div>
+        <div style="flex:1; min-width:0;">
+          <p class="row-title" style="font-weight:600;">Regra de ouro do mês</p>
+          <p class="row-sub">Nunca gaste tudo. Termine o mês com saldo positivo, poupe 10% (prosperidade) e reserve 10% para o dízimo.</p>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:12px;">
+            <div class="flex-between" style="font-size:12px;">
+              <span style="color:var(--paperDim);">${c.okSaldo ? "✅" : "⚠️"} Saldo do mês</span>
+              <span class="mono" style="color:${c.okSaldo ? "var(--green)" : "var(--rust)"};">${brl(c.saldoMes)}</span>
+            </div>
+            <div class="flex-between" style="font-size:12px;">
+              <span style="color:var(--paperDim);">${c.okPoupanca ? "✅" : "⚠️"} Poupança/Tesouro (meta 10%)</span>
+              <span class="mono" style="color:${c.okPoupanca ? "var(--green)" : "var(--rust)"};">${brl(c.aportadoMes)} / ${brl(c.metaPoupanca)}</span>
+            </div>
+            <div class="flex-between" style="font-size:12px;">
+              <span style="color:var(--paperDim);">${c.okDizimo ? "✅" : "⚠️"} Dízimo (meta 10%)</span>
+              <span class="mono" style="color:${c.okDizimo ? "var(--green)" : "var(--rust)"};">${brl(c.dizimoMes)} / ${brl(c.metaDizimo)}</span>
+            </div>
+          </div>
+          ${c.entradasMes===0 ? `<p class="hint" style="margin-top:8px; font-style:italic;">Registre suas entradas do mês para acompanhar as metas automaticamente. Dica: categorize a saída do dízimo como "Dízimo".</p>` : ""}
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-gold" onclick="openDizimoModal()">🏦 Dei o dízimo</button>
+            <button class="btn btn-green" onclick="openSaldoPoupModal()">🐷 Enviar saldo p/ poupança</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="display:grid; grid-template-columns:1fr; gap:16px;">
+      <div class="card">
+        <h3 class="chart-title">Dízimos registrados</h3>
+        ${c.dizimosRegistrados.length===0 ? `<p class="hint">Nenhum dízimo registrado ainda.</p>` :
+          `<div style="display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto;">
+            ${c.dizimosRegistrados.map(x=>`
+              <div class="flex-between" style="font-size:12px; padding:4px 0;">
+                <span style="color:var(--paperDim);">${x.date}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="mono" style="color:var(--gold);">${brl(x.amount)}</span>
+                  <button class="ghost-del" onclick="deleteTransaction('${x.id}')">🗑</button>
+                </div>
+              </div>`).join("")}
+          </div>`}
+      </div>
+      <div class="card">
+        <h3 class="chart-title">Saldo enviado à poupança</h3>
+        ${c.saldosEnviadosPoupanca.length===0 ? `<p class="hint">Nenhum envio de saldo registrado ainda.</p>` :
+          `<div style="display:flex; flex-direction:column; gap:4px; max-height:180px; overflow-y:auto;">
+            ${c.saldosEnviadosPoupanca.map(p=>`
+              <div class="flex-between" style="font-size:12px; padding:4px 0;">
+                <span style="color:var(--paperDim);">${p.date}</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="mono" style="color:var(--green);">${brl(p.amount)}</span>
+                  <button class="ghost-del" onclick="deletePatrimonio('poupanca','${p.id}')">🗑</button>
+                </div>
+              </div>`).join("")}
+          </div>`}
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--panel2);">
+      <div style="display:flex; align-items:flex-start; gap:12px;">
+        <div class="row-icon" style="background:color-mix(in srgb, var(--green) 15%, transparent);">📈</div>
+        <div>
+          <p class="row-title" style="font-weight:600;">Dica para prosperar</p>
+          <p class="row-sub" style="margin-top:4px; line-height:1.55;">${c.dica}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="card"><div class="stat-top"><span class="stat-label">Entradas</span>📈</div><span class="stat-value">${brl(c.totalEntradas)}</span></div>
+      <div class="card"><div class="stat-top"><span class="stat-label">Saídas</span>📉</div><span class="stat-value">${brl(c.totalSaidas)}</span></div>
+      <div class="card"><div class="stat-top"><span class="stat-label">Saldo</span>👛</div><span class="stat-value">${brl(c.saldo)}</span></div>
+      <div class="card"><div class="stat-top"><span class="stat-label">Patrimônio</span>🐷</div><span class="stat-value">${brl(c.totalPatrimonio)}</span></div>
+    </div>
+
+    <div class="card">
+      <h3 class="chart-title">Entradas vs. Saídas por mês</h3>
+      ${c.entradaSaidaSeries.length===0 ? `<p class="empty-msg">Adicione lançamentos para ver este gráfico.</p>` : `<div class="chart-box"><canvas id="chartEntradaSaida"></canvas></div>`}
+    </div>
+
+    <div class="card">
+      <h3 class="chart-title">Evolução do patrimônio (poupança + tesouro direto)</h3>
+      ${c.patrimonioSeries.length===0 ? `<p class="empty-msg">Adicione aportes em Patrimônio para ver o gráfico crescer.</p>` : `<div class="chart-box"><canvas id="chartPatrimonio"></canvas></div>`}
+    </div>
+
+    <div class="grid-2" style="display:grid; grid-template-columns:1fr; gap:16px;">
+      <div class="card">
+        <h3 class="chart-title">Saídas por categoria</h3>
+        ${c.categoriaSaidas.length===0 ? `<p class="empty-msg">Nenhuma saída registrada.</p>` : `<div class="chart-box" style="height:200px;"><canvas id="chartCategorias"></canvas></div>`}
+      </div>
+      <div class="card">
+        <h3 class="chart-title">Resumo de dívidas</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${DATA.dividas.map(d=>`
+            <div class="flex-between" style="font-size:13px;">
+              <span style="display:flex; align-items:center; gap:8px; color:var(--paper);">${iconeDivida(d.tipo)} ${d.nome}</span>
+              <span class="mono" style="color:var(--rust);">${brl(d.valor)}</span>
+            </div>`).join("")}
+          <div style="height:1px; background:var(--line); margin:4px 0;"></div>
+          <div class="flex-between" style="font-size:13px; font-weight:600;">
+            <span style="color:var(--paper);">Total</span>
+            <span class="mono" style="color:var(--rust);">${brl(c.totalDividas)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function chartColors() {
+  return {
+    line: cssVar('--line'), paperDim: cssVar('--paperDim'), paper: cssVar('--paper'),
+    gold: cssVar('--gold'), rust: cssVar('--rust'), green: cssVar('--green'), panel2: cssVar('--panel2'),
+  };
+}
+
+function mountVisaoCharts(c) {
+  const col = chartColors();
+  const esCanvas = document.getElementById("chartEntradaSaida");
+  if (esCanvas) {
+    charts.entradaSaida = new Chart(esCanvas, {
+      type: "bar",
+      data: {
+        labels: c.entradaSaidaSeries.map(m=>m.mes),
+        datasets: [
+          { label: "Entradas", data: c.entradaSaidaSeries.map(m=>m.entradas), backgroundColor: col.green, borderRadius: 4 },
+          { label: "Saídas", data: c.entradaSaidaSeries.map(m=>m.saidas), backgroundColor: col.rust, borderRadius: 4 },
+        ]
+      },
+      options: baseChartOptions(col)
+    });
+  }
+  const patCanvas = document.getElementById("chartPatrimonio");
+  if (patCanvas) {
+    charts.patrimonio = new Chart(patCanvas, {
+      type: "line",
+      data: { labels: c.patrimonioSeries.map(p=>p.label), datasets: [{ label:"Patrimônio", data: c.patrimonioSeries.map(p=>p.total), borderColor: col.gold, backgroundColor: col.gold, tension:.3, pointRadius:3 }] },
+      options: baseChartOptions(col)
+    });
+  }
+  const catCanvas = document.getElementById("chartCategorias");
+  if (catCanvas) {
+    const palette = [col.rust, col.gold, col.green, "#6E8B7A", "#8A5A3F", "#D4B04A"];
+    charts.categorias = new Chart(catCanvas, {
+      type: "pie",
+      data: { labels: c.categoriaSaidas.map(x=>x.name), datasets:[{ data: c.categoriaSaidas.map(x=>x.value), backgroundColor: c.categoriaSaidas.map((_,i)=>palette[i%palette.length]) }] },
+      options: { plugins:{ legend:{ labels:{ color: col.paperDim, font:{size:11} } } }, maintainAspectRatio:false }
+    });
+  }
+}
+
+function baseChartOptions(col) {
+  return {
+    maintainAspectRatio:false,
+    scales: {
+      x: { ticks:{ color: col.paperDim, font:{size:11} }, grid:{ color: col.line } },
+      y: { ticks:{ color: col.paperDim, font:{size:11}, callback: v => "R$"+v }, grid:{ color: col.line } },
+    },
+    plugins: { legend: { labels:{ color: col.paperDim, font:{size:11} } } }
+  };
+}
+
+/* =========================================================
+   LANÇAMENTOS
+========================================================= */
+function viewLancamentos(c) {
+  return `
+    <div><p class="eyebrow">Movimentação</p><h2 class="section-title">Lançamentos</h2></div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="openTxModal('entrada')">➕ Entrada</button>
+      <button class="btn btn-rust" onclick="openTxModal('saida')">➕ Despesa</button>
+    </div>
+    <div class="card" style="padding:0;">
+      ${DATA.transactions.length===0 ? `<p class="empty-msg">Nenhum lançamento ainda. Adicione uma entrada ou despesa acima.</p>` :
+        DATA.transactions.map(x=>`
+          <div class="list-row">
+            <div class="row-left">
+              <div class="row-icon" style="background:${x.type==="entrada"?"color-mix(in srgb, var(--green) 15%, transparent)":"color-mix(in srgb, var(--rust) 15%, transparent)"};">${x.type==="entrada"?"📈":"📉"}</div>
+              <div style="min-width:0;">
+                <p class="row-title">${x.desc}</p>
+                <p class="row-sub">${x.category} · ${x.date}</p>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="mono" style="font-size:14px; font-weight:600; color:${x.type==="entrada"?"var(--green)":"var(--rust)"};">${x.type==="entrada"?"+":"-"}${brl(x.amount)}</span>
+              <button class="ghost-del" onclick="deleteTransaction('${x.id}')">🗑</button>
+            </div>
+          </div>
+        `).join("")}
+    </div>
+  `;
+}
+
+/* =========================================================
+   PATRIMÔNIO
+========================================================= */
+function viewPatrimonio(c) {
+  const secoes = [
+    { key:"poupanca", label:"Poupança", icon:"🐷", total:c.totalPoupanca },
+    { key:"tesouro", label:"Tesouro Direto", icon:"🏦", total:c.totalTesouro },
+  ];
+  return `
+    <div><p class="eyebrow">Multiplicação de dinheiro</p><h2 class="section-title">Patrimônio</h2></div>
+    <div class="grid-2" style="display:grid; grid-template-columns:1fr; gap:16px;">
+      ${secoes.map(sec => `
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:8px;"><span>${sec.icon}</span><h3 class="row-title">${sec.label}</h3></div>
+            <button class="btn btn-gold" onclick="openPatModal('${sec.key}')">➕ Aporte</button>
+          </div>
+          <p class="mono" style="font-size:20px; font-weight:600; color:var(--gold); margin-bottom:10px;">${brl(sec.total)}</p>
+          <div style="display:flex; flex-direction:column; gap:4px; max-height:190px; overflow-y:auto;">
+            ${DATA.patrimonio[sec.key].length===0 ? `<p class="hint">Sem aportes registrados.</p>` :
+              DATA.patrimonio[sec.key].map(p=>`
+                <div class="flex-between" style="font-size:12px; padding:4px 0;">
+                  <span style="color:var(--paperDim);">${p.date}${p.note?" · "+p.note:""}</span>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="mono" style="color:var(--paper);">${brl(p.amount)}</span>
+                    <button class="ghost-del" onclick="deletePatrimonio('${sec.key}','${p.id}')">🗑</button>
+                  </div>
+                </div>`).join("")}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+    <div class="card flex-between highlight-card">
+      <span style="color:var(--paperDim);">Total do patrimônio (poupança + Tesouro Direto)</span>
+      <span class="mono" style="font-size:18px; font-weight:600; color:var(--gold);">${brl(c.totalPatrimonio)}</span>
+    </div>
+  `;
+}
+
+/* =========================================================
+   DÍVIDAS
+========================================================= */
+function viewDividas(c) {
+  return `
+    <div><p class="eyebrow">Compromissos fixos</p><h2 class="section-title">Dívidas</h2></div>
+    <div class="btn-row">
+      <button class="btn btn-rust" onclick="openDividaModal()">➕ Nova dívida / despesa fixa</button>
+      <button class="btn btn-gold" onclick="lancarTodasDespesasFixas()">💸 Paguei todas este mês</button>
+    </div>
+    <p class="hint">Clique em "Paguei" na despesa correspondente assim que pagar — o valor é lançado como saída na hora e já é subtraído do caixa.</p>
+    <div class="card" style="padding:0;">
+      ${DATA.dividas.map(d=>`
+        <div class="list-row" style="flex-direction:column; align-items:stretch; gap:10px;">
+          <div class="flex-between">
+            <div class="row-left">
+              <div class="row-icon" style="background:color-mix(in srgb, var(--rust) 15%, transparent);">${iconeDivida(d.tipo)}</div>
+              <div>
+                <p class="row-title">${d.nome}</p>
+                ${d.parcelasRestantes>0 ? `<p class="row-sub">${d.parcelasRestantes} parcelas restantes</p>` : ""}
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <input type="number" value="${d.valor}" style="width:100px; color:var(--rust); font-family:'JetBrains Mono',monospace;"
+                onchange="updateDividaValor('${d.id}', this.value)" />
+              <button class="ghost-del" onclick="deleteDivida('${d.id}')">🗑</button>
+            </div>
+          </div>
+          <button class="btn btn-gold" style="align-self:flex-start;" onclick="lancarDividaComoDespesa('${d.id}')">💸 Paguei ${d.nome}</button>
+        </div>
+      `).join("")}
+    </div>
+    <div class="card flex-between">
+      <span style="color:var(--paperDim);">Total em dívidas</span>
+      <span class="mono" style="font-size:18px; font-weight:600; color:var(--rust);">${brl(c.totalDividas)}</span>
+
+    </div>
+  `;
+}
+
+/* =========================================================
+   HISTÓRICO
+========================================================= */
+function viewHistorico(c) {
+  const hm = c.historicoMensal, ha = c.historicoAnual;
+  return `
+    <div>
+      <p class="eyebrow">Evolução</p>
+      <h2 class="section-title">Histórico financeiro</h2>
+      <p class="section-desc">Desenvolvimento mês a mês e ano a ano, com percentuais de poupança e dízimo.</p>
+    </div>
+
+    <div class="card highlight-card">
+      <div class="flex-between">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="row-icon" style="width:40px; height:40px; font-size:20px; background:color-mix(in srgb, var(--gold) 15%, transparent);">🏦</div>
+          <div>
+            <p class="stat-label">Patrimônio total acumulado</p>
+            <p class="mono" style="font-size:22px; font-weight:600; color:var(--gold);">${brl(c.totalPatrimonio)}</p>
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--paperDim); text-align:right;">
+          <p>Poupança: <span class="mono" style="color:var(--paper);">${brl(c.totalPoupanca)}</span></p>
+          <p>Tesouro Direto: <span class="mono" style="color:var(--paper);">${brl(c.totalTesouro)}</span></p>
+        </div>
+      </div>
+    </div>
+
+    ${hm.length===0 ? `<div class="card"><p class="empty-msg">Ainda não há dados suficientes. Registre lançamentos e aportes para construir seu histórico.</p></div>` : `
+      <div class="card">
+        <h3 class="chart-title">Entradas, saídas e saldo por mês</h3>
+        <div class="chart-box"><canvas id="chartHistoricoMensal"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3 class="chart-title">Patrimônio acumulado (poupança + tesouro direto)</h3>
+        <div class="chart-box"><canvas id="chartHistoricoPatrimonio"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3 class="chart-title">% poupado e % dízimo sobre as entradas, por mês</h3>
+        <div class="chart-box"><canvas id="chartHistoricoPct"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3 class="chart-title">Detalhe mensal — dízimo e envio à poupança</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Mês</th><th>Entradas</th><th>Saldo</th><th>Dízimo dado</th><th>Enviado à poupança</th><th>% Poupado</th><th>% Dízimo</th></tr></thead>
+          <tbody>
+            ${[...hm].reverse().map(m=>`
+              <tr>
+                <td style="font-weight:600;">${m.mes}</td>
+                <td class="mono">${brl(m.entradas)}</td>
+                <td class="mono" style="color:${m.saldo>=0?"var(--green)":"var(--rust)"};">${brl(m.saldo)}</td>
+                <td class="mono" style="color:var(--gold);">${m.dizimo>0?brl(m.dizimo):"—"}</td>
+                <td class="mono" style="color:var(--green);">${m.aportes>0?brl(m.aportes):"—"}</td>
+                <td>${m.pctPoupado}%</td>
+                <td>${m.pctDizimo}%</td>
+              </tr>`).join("")}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style="color:var(--gold);">Total</td>
+              <td class="mono">${brl(c.totalEntradas)}</td>
+              <td class="mono" style="color:${c.saldo>=0?"var(--green)":"var(--rust)"};">${brl(c.saldo)}</td>
+              <td class="mono" style="color:var(--gold);">${brl(c.dizimosRegistrados.reduce((s,x)=>s+x.amount,0))}</td>
+              <td class="mono" style="color:var(--gold);">${brl(c.totalPatrimonio)}</td>
+              <td colspan="2" style="color:var(--paperDim); font-weight:400;">Patrimônio total acima</td>
+            </tr>
+          </tfoot>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <h3 class="chart-title">Resumo por ano</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Ano</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>% Poupado</th><th>% Dízimo</th><th>Crescimento</th></tr></thead>
+          <tbody>
+            ${ha.map(y=>`
+              <tr>
+                <td style="font-weight:600;">${y.ano}</td>
+                <td class="mono" style="color:var(--green);">${brl(y.entradas)}</td>
+                <td class="mono" style="color:var(--rust);">${brl(y.saidas)}</td>
+                <td class="mono" style="color:${y.saldo>=0?"var(--green)":"var(--rust)"};">${brl(y.saldo)}</td>
+                <td>${y.pctPoupado}%</td>
+                <td>${y.pctDizimo}%</td>
+                <td>${y.crescimentoEntradas===null ? `<span style="color:var(--paperDim);">—</span>` :
+                  `<span style="color:${y.crescimentoEntradas>=0?"var(--green)":"var(--rust)"};">${y.crescimentoEntradas>=0?"▲":"▼"} ${Math.abs(y.crescimentoEntradas)}%</span>`}</td>
+              </tr>`).join("")}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style="color:var(--gold);">Total geral</td>
+              <td class="mono" style="color:var(--green);">${brl(ha.reduce((s,y)=>s+y.entradas,0))}</td>
+              <td class="mono" style="color:var(--rust);">${brl(ha.reduce((s,y)=>s+y.saidas,0))}</td>
+              <td class="mono" style="color:${c.saldo>=0?"var(--green)":"var(--rust)"};">${brl(c.saldo)}</td>
+              <td colspan="3" style="font-weight:400;">
+                <span style="color:var(--paperDim);">Patrimônio total acumulado: </span>
+                <span class="mono" style="color:var(--gold); font-weight:600;">${brl(c.totalPatrimonio)}</span>
+              </td>
+            </tr>
+          </tfoot>
+        </table></div>
+      </div>
+    `}
+  `;
+}
+
+function mountHistoricoCharts(c) {
+  const col = chartColors();
+  const hm = c.historicoMensal;
+  if (hm.length === 0) return;
+
+  const cEl = document.getElementById("chartHistoricoMensal");
+  if (cEl) {
+    charts.histMensal = new Chart(cEl, {
+      data: {
+        labels: hm.map(m=>m.mes),
+        datasets: [
+          { type:"bar", label:"Entradas", data: hm.map(m=>m.entradas), backgroundColor: col.green, borderRadius:3 },
+          { type:"bar", label:"Saídas", data: hm.map(m=>m.saidas), backgroundColor: col.rust, borderRadius:3 },
+          { type:"line", label:"Saldo", data: hm.map(m=>m.saldo), borderColor: col.gold, backgroundColor: col.gold, tension:.3, pointRadius:2.5 },
+        ]
+      },
+      options: baseChartOptions(col)
+    });
+  }
+  const pEl = document.getElementById("chartHistoricoPatrimonio");
+  if (pEl) {
+    charts.histPatrimonio = new Chart(pEl, {
+      type:"line",
+      data: { labels: hm.map(m=>m.mes), datasets:[{ label:"Patrimônio acumulado", data: hm.map(m=>m.acumuladoPatrimonio), borderColor: col.gold, backgroundColor: "rgba(203,161,53,0.25)", fill:true, tension:.3, pointRadius:2 }] },
+      options: baseChartOptions(col)
+    });
+  }
+  const pctEl = document.getElementById("chartHistoricoPct");
+  if (pctEl) {
+    charts.histPct = new Chart(pctEl, {
+      type:"line",
+      data: {
+        labels: hm.map(m=>m.mes),
+        datasets: [
+          { label:"% Poupado", data: hm.map(m=>m.pctPoupado), borderColor: col.green, tension:.3, pointRadius:2 },
+          { label:"% Dízimo", data: hm.map(m=>m.pctDizimo), borderColor: col.gold, tension:.3, pointRadius:2 },
+          { label:"% Gasto", data: hm.map(m=>m.pctGasto), borderColor: col.rust, borderDash:[4,3], tension:.3, pointRadius:2 },
+        ]
+      },
+      options: { ...baseChartOptions(col), scales:{ ...baseChartOptions(col).scales, y:{ ...baseChartOptions(col).scales.y, ticks:{ color: col.paperDim, callback:v=>v+"%" } } } }
+    });
+  }
+}
+
+/* =========================================================
+   APRENDA
+========================================================= */
+function viewAprenda() {
+  const cards = [
+    { icon:"👛", titulo:"Nunca gaste tudo", texto:"Todo mês deve terminar com saldo positivo. Um saldo zerado significa que qualquer imprevisto vira dívida. Trate o saldo positivo como meta inegociável, não como sobra." },
+    { icon:"🐷", titulo:"10% para prosperidade", texto:"Reserve 10% de tudo que entra antes de gastar — não depois. Direcione para poupança e Tesouro Direto. É o hábito, mais do que o valor, que constrói patrimônio ao longo dos anos." },
+    { icon:"🏦", titulo:"10% para o dízimo", texto:"Separe 10% das entradas para o dízimo como prioridade, junto com a poupança. Tratar generosidade e prosperidade como parte fixa do orçamento evita que sobrem só depois dos gastos." },
+    { icon:"📈", titulo:"Juros compostos trabalham no tempo", texto:"Um aporte pequeno e constante supera um aporte grande e esporádico. O gráfico de patrimônio acumulado mostra isso: a curva cresce mais rápido quanto mais tempo os aportes permanecem investidos." },
+    { icon:"🚗", titulo:"Dívidas fixas sob controle", texto:"Parcelas como carro devem ter fim previsto e caber confortavelmente no orçamento. Acompanhe o valor e as parcelas restantes na aba Dívidas para nunca perder a visão do compromisso total." },
+    { icon:"🛒", titulo:"Separe essencial de variável", texto:"Categorize despesas do mês (mercado, lazer, contas) para identificar onde o dinheiro realmente vai. O gráfico de saídas por categoria existe para isso: decisões seguem dados, não sensação." },
+  ];
+  return `
+    <div>
+      <p class="eyebrow">Educação financeira</p>
+      <h2 class="section-title">Princípios para multiplicar patrimônio</h2>
+      <p class="section-desc">Fundamentos simples e consistentes, aplicados mês após mês.</p>
+    </div>
+    <div class="teach-grid">
+      ${cards.map(cd=>`
+        <div class="card">
+          <div class="teach-card-head"><div class="teach-icon">${cd.icon}</div><h3 class="teach-title">${cd.titulo}</h3></div>
+          <p class="teach-text">${cd.texto}</p>
+        </div>
+      `).join("")}
+    </div>
+    <div class="card highlight-card">
+      <p class="row-title" style="font-weight:600; margin-bottom:4px;">Regra prática de fechamento de mês</p>
+      <p class="teach-text">Ao receber: separe 10% para poupança/Tesouro Direto e 10% para o dízimo primeiro. Do restante, pague dívidas fixas (carro), depois as compras do mês. Só gaste com o que sobrar — e mesmo assim, deixe uma margem de segurança antes de zerar o saldo.</p>
+    </div>
+  `;
+}
+
+/* =========================================================
+   MODAIS
+========================================================= */
+function openModal(title, bodyHTML) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").innerHTML = bodyHTML;
+  document.getElementById("modalOverlay").classList.remove("hidden");
+}
+function closeModal() { document.getElementById("modalOverlay").classList.add("hidden"); }
+
+let currentTxType = "entrada";
+function openTxModal(type) {
+  currentTxType = type;
+  openModal(type==="entrada" ? "Nova entrada" : "Nova despesa", `
+    <div class="form-col">
+      <label class="field"><span>Descrição</span><input id="f-desc" placeholder="${type==="entrada"?"Ex: Salário SEMED":"Ex: Combustível"}" /></label>
+      <label class="field"><span>Categoria</span><input id="f-cat" placeholder="${type==="entrada"?"Ex: Salário, Freela":"Ex: Carro, Mercado, Lazer"}" /></label>
+      <div class="grid-2">
+        <label class="field"><span>Valor (R$)</span><input id="f-amount" type="number" placeholder="0,00" /></label>
+        <label class="field"><span>Data</span><input id="f-date" type="date" value="${todayISO()}" /></label>
+      </div>
+      <button class="btn ${type==="entrada"?"btn-green":"btn-rust"}" onclick="submitTx()">➕ Adicionar</button>
+    </div>
+  `);
+}
+function submitTx() {
+  const desc = document.getElementById("f-desc").value;
+  const cat = document.getElementById("f-cat").value;
+  const amount = parseFloat(document.getElementById("f-amount").value);
+  const date = document.getElementById("f-date").value || todayISO();
+  if (!desc || !amount) return;
+  DATA.transactions.unshift({ id: uid(), type: currentTxType, desc, category: cat || (currentTxType==="entrada"?"Renda":"Outros"), amount, date });
+  saveData(); closeModal(); render();
+}
+function deleteTransaction(id) {
+  DATA.transactions = DATA.transactions.filter(x=>x.id!==id);
+  saveData(); render();
+}
+
+let currentPatKey = "poupanca";
+function openPatModal(key) {
+  currentPatKey = key;
+  openModal(`Novo aporte — ${key==="poupanca"?"Poupança":"Tesouro Direto"}`, `
+    <div class="form-col">
+      <div class="grid-2">
+        <label class="field"><span>Valor (R$)</span><input id="f-amount" type="number" placeholder="0,00" /></label>
+        <label class="field"><span>Data</span><input id="f-date" type="date" value="${todayISO()}" /></label>
+      </div>
+      <label class="field"><span>Observação (opcional)</span><input id="f-note" placeholder="Ex: Rendimento do mês, aporte extra…" /></label>
+      <button class="btn btn-gold" onclick="submitPat()">➕ Adicionar aporte</button>
+    </div>
+  `);
+}
+function submitPat() {
+  const amount = parseFloat(document.getElementById("f-amount").value);
+  const date = document.getElementById("f-date").value || todayISO();
+  const note = document.getElementById("f-note").value;
+  if (!amount) return;
+  DATA.patrimonio[currentPatKey].unshift({ id: uid(), amount, note, date });
+  saveData(); closeModal(); render();
+}
+function deletePatrimonio(tipo, id) {
+  DATA.patrimonio[tipo] = DATA.patrimonio[tipo].filter(p=>p.id!==id);
+  saveData(); render();
+}
+
+function openDividaModal() {
+  openModal("Nova dívida / despesa fixa", `
+    <div class="form-col">
+      <label class="field"><span>Nome</span><input id="f-nome" placeholder="Ex: Cartão de crédito, Financiamento" /></label>
+      <label class="field"><span>Tipo</span>
+        <select id="f-tipo">
+          <option value="carro">Carro</option>
+          <option value="compras">Compras do mês</option>
+          <option value="outro">Outro</option>
+        </select>
+      </label>
+      <div class="grid-2">
+        <label class="field"><span>Valor (R$)</span><input id="f-valor" type="number" placeholder="0,00" /></label>
+        <label class="field"><span>Parcelas restantes</span><input id="f-parcelas" type="number" placeholder="0" /></label>
+      </div>
+      <button class="btn btn-rust" onclick="submitDivida()">➕ Adicionar dívida</button>
+    </div>
+  `);
+}
+function submitDivida() {
+  const nome = document.getElementById("f-nome").value;
+  const tipo = document.getElementById("f-tipo").value;
+  const valor = parseFloat(document.getElementById("f-valor").value);
+  const parcelasRestantes = parseInt(document.getElementById("f-parcelas").value || "0", 10);
+  if (!nome || !valor) return;
+  DATA.dividas.push({ id: uid(), nome, tipo, valor, parcelasRestantes });
+  saveData(); closeModal(); render();
+}
+function deleteDivida(id) {
+  DATA.dividas = DATA.dividas.filter(x=>x.id!==id);
+  saveData(); render();
+}
+function updateDividaValor(id, valor) {
+  DATA.dividas = DATA.dividas.map(x=> x.id===id ? {...x, valor: parseFloat(valor)||0} : x);
+  saveData(); render();
+}
+
+function lancarDividaComoDespesa(id) {
+  const d = DATA.dividas.find(x=>x.id===id);
+  if (!d || !d.valor) return;
+  DATA.transactions.unshift({ id: uid(), type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: todayISO() });
+  saveData(); render();
+}
+
+function lancarTodasDespesasFixas() {
+  const hoje = todayISO();
+  DATA.dividas.forEach(d => {
+    if (d.valor > 0) {
+      DATA.transactions.unshift({ id: uid(), type:"saida", desc:d.nome, category:d.nome, amount:d.valor, date: hoje });
+    }
+  });
+  saveData(); render();
+}
+
+function openDizimoModal() {
+  const c = computeAll();
+  openModal("Registrar dízimo", `
+    <div class="form-col">
+      <div class="grid-2">
+        <label class="field"><span>Valor (R$)</span><input id="f-amount" type="number" value="${c.metaDizimo ? c.metaDizimo.toFixed(2) : ""}" placeholder="0,00" /></label>
+        <label class="field"><span>Data</span><input id="f-date" type="date" value="${todayISO()}" /></label>
+      </div>
+      <p class="hint">Isso lança uma saída categorizada como "Dízimo" e conta na meta do mês.</p>
+      <button class="btn btn-gold" onclick="submitDizimo()">➕ Confirmar dízimo</button>
+    </div>
+  `);
+}
+function submitDizimo() {
+  const amount = parseFloat(document.getElementById("f-amount").value);
+  const date = document.getElementById("f-date").value || todayISO();
+  if (!amount) return;
+  DATA.transactions.unshift({ id: uid(), type:"saida", desc:"Dízimo", category:"Dízimo", amount, date });
+  saveData(); closeModal(); render();
+}
+
+function openSaldoPoupModal() {
+  const c = computeAll();
+  openModal("Enviar saldo do mês para poupança", `
+    <div class="form-col">
+      <div class="grid-2">
+        <label class="field"><span>Valor (R$)</span><input id="f-amount" type="number" value="${c.saldoMes>0 ? c.saldoMes.toFixed(2) : ""}" placeholder="0,00" /></label>
+        <label class="field"><span>Data</span><input id="f-date" type="date" value="${todayISO()}" /></label>
+      </div>
+      <p class="hint">Isso lança um aporte de Poupança com a nota "Saldo do mês enviado".</p>
+      <button class="btn btn-green" onclick="submitSaldoPoup()">➕ Confirmar envio</button>
+    </div>
+  `);
+}
+function submitSaldoPoup() {
+  const amount = parseFloat(document.getElementById("f-amount").value);
+  const date = document.getElementById("f-date").value || todayISO();
+  if (!amount) return;
+  DATA.patrimonio.poupanca.unshift({ id: uid(), amount, note:"Saldo do mês enviado", date });
+  saveData(); closeModal(); render();
+}
+
+/* =========================================================
+   Início
+========================================================= */
+document.documentElement.setAttribute("data-theme", THEME);
+renderThemeSwitch();
+render();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((e) => console.error("Erro ao registrar service worker:", e));
+  });
+}
+</script>
+</body>
+</html>
