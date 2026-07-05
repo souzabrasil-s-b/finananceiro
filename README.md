@@ -1,4 +1,4 @@
-# Livro-Caixa — pronto para GitHub Pages, Firebase e PWABuilder
+# Livro-Caixa — pronto para GitHub Pages, Firebase e PWABuilder   
 
 Esta pasta já está pronta para virar um app instalável. Contém:
 
